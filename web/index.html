@@ -59,7 +59,7 @@
 								<img class="image" :src="'/img/items/'+ item.id +'.jpg'" :alt="item.Name" />
 								<p class="description">{{ item.Description }}</p>
 								<span class="price">{{ item.Price }} Ft</span>
-								<a class="btn to-cart" v-on:click="toCart(item.id)">
+								<a v-if="user !== false" class="btn to-cart" v-on:click="toCart(item.id)">
 									To Cart
 									<i class="fa fa-cart-plus"></i>
 								</a>

@@ -1,0 +1,235 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="hu">
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+		<title>Ételfutár</title>
+		
+		<LINK REL='stylesheet' type='text/css' href='/css/font-awesome.min.css'>
+		<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,500,500i,700,700i&display=swap" rel="stylesheet">
+		<LINK REL='stylesheet' type='text/css' href='/css/client.css'>
+		<script src="/js/vue.min.js"></script>
+        <script src="/js/socketio.min.js"></script>
+	</head>
+	<body>
+		<div id="main">
+			<transition name="fade">
+				<img v-if="ui.loading" src="/img/loader.gif" alt="loading" id="loading" />
+			</transition>
+
+			<div id="header">
+				<div class="container">
+					<a v-if="user === false" class="btn" v-on:click="setPage('login')">
+						<i class="fa fa-sign-in"></i>
+						Login/Register
+					</a>
+					<a v-else class="btn" v-on:click="logout">
+						<i class="fa fa-sign-out"></i>
+						Logout
+					</a>
+				</div>
+			</div>
+
+			<img id="carousel" src="/img/carousel.jpg" />
+			<div class="container">
+				<transition name="fade">
+					<p v-if="ui.page != 'index'" id="title">
+						<a class="btn" v-on:click="setPage(ui.prevLink)">
+							<i class="fa fa-caret-left"></i>
+							{{ ui.prevTitle }}
+						</a>
+						{{ ui.title }}
+					</p>
+				</transition>
+				<transition name="fade">
+					<ul v-if="ui.page == 'index'" class="page categories">
+						<li v-for="cat in data.categories" v-on:click="showCategory(cat)">
+							<span class="title">{{ cat }}</span>
+							<img class="image" :src="'/img/categories/'+ cat +'.jpg'" :alt="cat" />
+						</li>
+					</ul>
+				
+					<div v-if="ui.page == 'category'" class="page">
+						<ul class="items">
+							<li v-for="item in data.items">
+								<div class="icons">
+									<img v-if="item.Vegatarian" src="/img/icon_vegatarian.png" title="Vegatarian" alt="Vegatarian" />							
+									<img v-if="item.Spicy" src="/img/icon_spicy.png" title="Spicy" alt="Spicy" />
+								</div>
+								<span class="title">{{ item.Name }}</span>
+								<img class="image" :src="'/img/items/'+ item.id +'.jpg'" :alt="item.Name" />
+								<p class="description">{{ item.Description }}</p>
+								<span class="price">{{ item.Price }} Ft</span>
+								<a class="btn to-cart" v-on:click="toCart(item.id)">
+									To Cart
+									<i class="fa fa-cart-plus"></i>
+								</a>
+							</li>
+						</ul>
+					</div>
+
+					<div v-if="user !== false && ui.page == 'cart'" class="page">
+						<ul class="cart">
+							<li v-for="item in data.cart.items">
+								<div class="image">
+									<img class="image" :src="'/img/items/'+ item.id +'.jpg'" :alt="item.Name" />
+									<div class="icons">
+										<img v-if="item.Vegatarian" src="/img/icon_vegatarian.png" title="Vegatarian" alt="Vegatarian" />							
+										<img v-if="item.Spicy" src="/img/icon_spicy.png" title="Spicy" alt="Spicy" />
+									</div>
+								</div>
+								<span class="title">{{ item.Name }}</span>
+								<span class="qty">
+									Qty: 
+									<b>{{ item.Qty }}</b>
+									<span class="arrows">
+										<a class="btn" v-on:click="toCart(item.id)">
+											<i class="fa fa-caret-up"></i>								
+										</a>
+										<a class="btn" :class="{ disabled: item.Qty < 2 }" v-on:click="reduceCart(item.id)">
+											<i class="fa fa-caret-down"></i>								
+										</a>
+									</span>
+								</span>
+								<span class="price">{{ item.Price }} Ft</span>
+								<a class="btn remove" v-on:click="removeCart(item.id)">
+									<i class="fa fa-trash"></i> Remove									
+								</a>
+								<div style="clear: both"></div>
+							</li>
+						</ul>
+						<div class="cart-summary">
+							<a class="btn remove" v-on:click="cancelOrder" style="margin-right: 10px">
+								<i class="fa fa-trash"></i> Cancel								
+							</a>
+							<a class="btn" v-on:click="setPage('order')">
+								<i class="fa fa-shopping-cart"></i> Order									
+							</a>
+							<span class="price">
+								<font v-if="cartPrice != data.cart.price" class="old">{{ data.cart.price }} Ft</font>
+								<font>{{ cartPrice }} Ft</font>
+							</span>
+						</div>
+					</div>
+
+					<div v-if="user !== false && ui.page == 'order'" class="page">
+						<div class="order">
+							<transition name="fade">
+								<div v-if="ui.error" class="error">
+									<i class="fa fa-exclamation-triangle"></i>
+									{{ ui.error }}
+								</div>
+							</transition>
+							<transition name="fade">
+								<div v-if="ui.success" class="success">
+									<i class="fa fa-check-circle"></i>
+									{{ ui.success }}
+								</div>
+							</transition>
+							<div class="form-row">
+								<div class="form-elem">
+									<label>Name:</label>
+									<input type="text" v-model="orderInputs.name" />
+								</div>
+							</div>
+							<div class="form-row">
+								<div class="form-elem">
+									<label>Address:</label>
+									<input type="text" v-model="orderInputs.address" />
+								</div>
+							</div>
+							<div class="form-row">
+								<div class="form-elem">
+									<label>Tel:</label>
+									<input type="text" v-model="orderInputs.tel" />
+								</div>
+							</div>
+						</div>
+						<div class="cart-summary" style="margin-top: 25px">
+							<a class="btn" v-on:click="order" style="float: right">
+								<i class="fa fa-check-square"></i>
+								Order
+							</a>
+						</div>
+					</div>
+					
+					<div v-if="ui.page == 'login'" class="page">
+						<div class="login">
+							<transition name="fade">
+								<div v-if="ui.error" class="error">
+									<i class="fa fa-exclamation-triangle"></i>
+									{{ ui.error }}
+								</div>
+							</transition>
+							<transition name="fade">
+								<div v-if="ui.success" class="success">
+									<i class="fa fa-check-circle"></i>
+									{{ ui.success }}
+								</div>
+							</transition>
+							<div class="form-row">
+								<div class="form-elem">
+									<label>Email:</label>
+									<input type="text" v-model="inputs.email" />
+								</div>
+							</div>
+							<div class="form-row">
+								<div class="form-elem">
+									<label>Password:</label>
+									<input type="password" v-model="inputs.password" />
+								</div>
+							</div>
+							<div class="form-row">
+								<a class="btn" v-on:click="setPage('register')">Register</a>						
+								<a class="btn" v-on:click="login" style="float: right">
+									<i class="fa fa-sign-in"></i>
+									Login
+								</a>
+							</div>
+						</div>
+					</div>
+				
+					<div v-if="ui.page == 'register'" class="page">
+						<div class="login">	
+							<transition name="fade">
+								<div v-if="ui.error" class="error">
+									<i class="fa fa-exclamation-triangle"></i>
+									{{ ui.error }}
+								</div>
+							</transition>
+							<div class="form-row">
+								<div class="form-elem">
+									<label>Email:</label>
+									<input type="text" v-model="inputs.email" />
+								</div>
+							</div>
+							<div class="form-row">
+								<div class="form-elem">
+									<label>Password:</label>
+									<input type="password" v-model="inputs.password" />
+								</div>
+							</div>
+							<div class="form-row">
+								<div class="form-elem">
+									<label>Re-Enter Password:</label>
+									<input type="password" v-model="inputs.password2" />
+								</div>
+							</div>
+							<div class="form-row">
+								<a class="btn" v-on:click="setPage('login')">Login</a>						
+								<a class="btn" v-on:click="register" style="float: right">
+									<i class="fa fa-sign-in"></i>
+									Register
+								</a>
+							</div>
+						</div>
+					</div>
+				</transition>
+			</div>
+			
+			<a v-if="isCartVisible" id="cart" v-on:click="setPage('cart')" class="btn">
+				<i class="fa fa-shopping-cart"></i> {{ data.cart.items.length }}
+			</a>
+		</div>
+		<script src="/js/client.js"></script>
+	</body>		
+</html>
